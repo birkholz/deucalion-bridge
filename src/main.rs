@@ -42,10 +42,18 @@ fn run(args: &Args) -> anyhow::Result<()> {
 
     // 1. Wait for the game process to appear.
     eprintln!("[bridge] Waiting for ffxiv_dx11.exe …");
+    let mut game_wait_ticks = 0u32; // each tick = 500 ms
     let pid = loop {
         match find_pid("ffxiv_dx11.exe")? {
             Some(pid) => break pid,
-            None => thread::sleep(Duration::from_millis(500)),
+            None => {
+                thread::sleep(Duration::from_millis(500));
+                game_wait_ticks += 1;
+                if game_wait_ticks % 20 == 0 {
+                    let secs = game_wait_ticks / 2;
+                    eprintln!("[bridge] Still waiting for ffxiv_dx11.exe ({secs} s) — start the game to enable packet capture");
+                }
+            }
         }
     };
     eprintln!("[bridge] PID {pid}");
@@ -56,12 +64,30 @@ fn run(args: &Args) -> anyhow::Result<()> {
     eprintln!("[bridge] deucalion.dll injected");
 
     // 3. Poll for the named pipe that deucalion creates after loading.
+    //    If the pipe never appears within 30 s the DLL likely failed to
+    //    initialise — most commonly because this deucalion build does not
+    //    yet support the current FFXIV patch.
     let pipe_path = format!("\\\\.\\pipe\\deucalion-{pid}");
     eprintln!("[bridge] Waiting for {pipe_path} …");
+    let pipe_deadline = std::time::Instant::now() + Duration::from_secs(30);
     let pipe = loop {
         match Pipe::open(&pipe_path) {
             Ok(p) => break p,
-            Err(_) => thread::sleep(Duration::from_millis(200)),
+            Err(_) => {
+                if std::time::Instant::now() >= pipe_deadline {
+                    eprintln!(
+                        "[bridge] Timed out waiting for {pipe_path} after 30 s."
+                    );
+                    eprintln!(
+                        "[bridge] Deucalion did not create its pipe. \
+                         Possible causes: the DLL does not support this FFXIV version yet, \
+                         or it failed to load for another reason. \
+                         Check https://github.com/ff14wed/deucalion/releases for updates."
+                    );
+                    std::process::exit(2);
+                }
+                thread::sleep(Duration::from_millis(200));
+            }
         }
     };
     eprintln!("[bridge] Pipe open");

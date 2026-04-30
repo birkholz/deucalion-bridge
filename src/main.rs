@@ -117,6 +117,9 @@ fn run(args: &Args) -> anyhow::Result<()> {
             tcp_tx.write_all(&buf[..n])?;
         }
         eprintln!("[bridge] pipe→tcp finished");
+        // Send TCP FIN so the client (Node.js) closes its end too, which
+        // will unblock the tcp→pipe thread and let the bridge exit cleanly.
+        let _ = tcp_tx.shutdown(std::net::Shutdown::Write);
         Ok(())
     });
 

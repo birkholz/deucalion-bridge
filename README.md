@@ -1,6 +1,6 @@
 # deucalion-bridge
 
-A small Windows executable (designed to run under **Wine**) that injects [deucalion](https://github.com/ff14wed/deucalion) into a running FFXIV process and forwards its named pipe over TCP — so that a **native Linux** [FFXIV Teamcraft](https://github.com/birkholz/ffxiv-teamcraft) can receive packet data without any Wine-side network stack involvement.
+A small Windows executable (designed to run under **Wine**) that injects [deucalion](https://github.com/ff14wed/deucalion) into a running FFXIV process and forwards its named pipe over TCP — so that a **native Linux** [FFXIV Teamcraft](https://github.com/birkholz/ffxiv-teamcraft) can receive packet data. Without this, the only way to have Teamcraft with packet capturing is to run the official Windows version in Wine alongside the game, resulting in very poor performance and various bugs.
 
 ## How it works
 
@@ -26,7 +26,7 @@ Example (run from Linux via Wine):
 
 ```bash
 WINEPREFIX=~/.xlcore/wineprefix \
-  wine deucalion-bridge.exe \
+  ~/.xlcore/compatibilitytool/<your wine version>/wine deucalion-bridge.exe \
     --dll-path 'C:\deucalion\deucalion.dll' \
     --port 31594
 ```
@@ -41,23 +41,13 @@ In normal use, Teamcraft spawns and manages this process automatically.
 - `x86_64-pc-windows-gnu` target: `rustup target add x86_64-pc-windows-gnu`
 - MinGW-w64: `sudo apt install gcc-mingw-w64-x86-64` (Debian/Ubuntu/Arch equivalent)
 
-### Build locally
 
-```bash
-# From the deucalion-bridge directory — copies the exe to ../ffxiv-teamcraft/tools/build/
-./build.sh
-```
-
-Or build manually:
+Build manually:
 
 ```bash
 cargo build --release --target x86_64-pc-windows-gnu
 # Output: target/x86_64-pc-windows-gnu/release/deucalion-bridge.exe
 ```
-
-### CI releases
-
-Pushing a `v*` tag triggers the GitHub Actions workflow, which cross-compiles and publishes `deucalion-bridge.exe` as a GitHub Release asset. Teamcraft's `yarn download:bridge` script fetches the latest release automatically as part of the AppImage build.
 
 ## License
 
